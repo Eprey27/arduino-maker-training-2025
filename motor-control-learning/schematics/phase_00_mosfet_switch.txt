@@ -1,0 +1,140 @@
+# Phase 0 - MOSFET Switch Test Schematic
+
+## Test 0.3: MOSFET Switching with Arduino Control
+
+```
+                    EXTERNAL 5V POWER SUPPLY
+                    (NOT Arduino 5V pin!)
+                           (+)  (-)
+                            │    │
+                            │    └─────────────┐
+                            │                  │
+                        Motor (+)              │
+                            │                  │
+                            │                  │
+                        Motor (-)              │
+                            │                  │
+                            │                  │
+                            ├──────────────────┼─── MOSFET Drain (Pin 2, center)
+                            │                  │
+                      Diodo Cátodo             │
+                       (banda)                 │
+                            │                  │
+                      Diodo Ánodo              │
+                       (sin banda)             │
+                            │                  │
+                            └──────────────────┘
+                            
+                    
+    Arduino                                MOSFET IRF520
+    Pin 9 ───────────┬──────────────────── Gate (Pin 1, left)
+    (PWM)            │                      
+                     │                      
+                Resistencia                 Drain (Pin 2, center) ─── Motor (-)
+                   10K                      
+                     │                      
+    Arduino          │                      Source (Pin 3, right) ─── GND
+    GND ─────────────┴──────────────────────┘
+                                             
+                                             
+    ⚠️  CRITICAL: Common GND connection required!
+    ⚠️  Motor power and Arduino must share the same GND
+
+
+    MOSFET Pinout (front view, pins down):
+    
+         IRF520
+      ┌──────────┐
+      │          │
+      │  IRF520  │
+      │          │
+      └──────────┘
+         │  │  │
+         1  2  3
+         │  │  │
+         │  │  └── SOURCE (to GND)
+         │  └───── DRAIN (to Motor -)
+         └──────── GATE (to Pin 9 + pull-down)
+```
+
+## Connection Checklist
+
+### Power Supply
+- [ ] External 5V supply connected (NOT Arduino 5V)
+- [ ] Supply can provide at least 100mA
+- [ ] Polarity verified (+ and -)
+
+### Motor Connections
+- [ ] Motor (+) to external 5V supply (+)
+- [ ] Motor (-) to MOSFET Drain (center pin)
+
+### MOSFET Connections
+- [ ] Gate (left pin) to Arduino Pin 9
+- [ ] Gate (left pin) to 10K resistor to GND
+- [ ] Drain (center pin) to Motor (-)
+- [ ] Source (right pin) to GND
+
+### Ground Connections  
+- [ ] Arduino GND to motor supply GND (CRITICAL!)
+- [ ] MOSFET Source to same common GND
+- [ ] 10K resistor to same common GND
+
+### Protection Diode (Optional for this test)
+- [ ] Diode cathode (band) to Motor (+)
+- [ ] Diode anode to Motor (-)
+- Note: Can be added later, not critical for basic switching test
+
+## Measurements to Take
+
+### Voltage Checks (with multimeter)
+1. Motor power:
+   - Measure Motor (+) to GND: Should be ~5V
+   
+2. MOSFET Gate:
+   - When Arduino pin LOW: Should be ~0V
+   - When Arduino pin HIGH: Should be ~5V
+   
+3. MOSFET Drain-Source:
+   - When gate LOW (motor off): Should be ~5V
+   - When gate HIGH (motor on): Should be <0.5V
+
+### Current Measurement
+1. Insert multimeter in series with motor
+2. Measure current when motor running
+3. Should be 60-90mA as expected
+
+### Temperature Check
+1. Run motor for 30 seconds
+2. Carefully touch MOSFET body
+3. Should be cool to warm, not hot
+
+## Safety Notes
+
+- Always disconnect power before changing connections
+- Verify polarity before applying power
+- Start with short test durations (30 seconds)
+- Monitor MOSFET temperature
+- If anything smokes or smells bad, DISCONNECT IMMEDIATELY
+
+## Common Wiring Mistakes
+
+❌ Motor powered from Arduino 5V pin
+   → Use external supply!
+
+❌ No common GND between Arduino and motor supply
+   → Gate voltage reference will be wrong
+
+❌ MOSFET Source not connected to GND
+   → MOSFET won't work
+
+❌ Gate resistor missing
+   → Motor may not turn off cleanly
+
+❌ Drain and Source swapped
+   → MOSFET won't conduct
+
+---
+
+Created: 2024-12-28
+Project: Arduino Motor Control Learning
+Phase: 0 - Component Verification

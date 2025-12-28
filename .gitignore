@@ -1,0 +1,86 @@
+# Arduino IDE
+*.hex
+*.eep
+*.elf
+*.map
+*.lss
+*.sym
+__pycache__/
+
+# Build directories
+build/
+.build/
+
+# Arduino IDE backup files
+*~
+*.bak
+*.swp
+*.swo
+*.autosave
+
+# Libraries (uncomment if you want to ignore libraries)
+# libraries/
+
+# Compiled binaries
+*.o
+*.a
+
+# Archives and compressed files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# OS generated files
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# IDEs and Editors
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Arduino IDE
+.idea/
+*.iml
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+# Documentation build files
+docs/_build/
+docs/.doctrees/
+
+# Hardware design files (uncomment if needed)
+# *.brd~
+# *.sch~
+# *.pro~
