@@ -109,14 +109,16 @@ Pin 3: Extremo B (conectar a GND en nuestro circuito)
 - Consumo reportado: 60-90mA @ voltaje desconocido
 - Tipo: DC brushed motor (con escobillas)
 
-**Mediciones Reales**:
-- [Pendiente test directo]
-- Voltaje de prueba: 5V
-- Corriente medida: _____ mA
-- Voltaje mínimo arranque: _____ V
-- Comportamiento: [ ] Suave [ ] Errático
-- RPM estimado: _____ (si se puede medir)
-- Temperatura después de 1 min @ 5V: _____ °C
+**Mediciones Reales** (2024-12-28):
+
+- ✅ Test directo completado
+- **Voltaje de prueba**: 5V
+- **Corriente medida**: 84 mA @ 4.985V
+- **Voltaje mínimo arranque**: 0.38 V
+- **Voltaje mínimo estable**: 0.28 V (ultra-bajo, revoluciones muy lentas)
+- **Comportamiento**: [X] Suave [ ] Errático
+- **RPM estimado**: Pendiente sensor óptico (Fase 5)
+- **Temperatura después de 90s @ 5V**: 24.1°C (delta +1.6°C desde 22.5°C ambiente)
 
 **Características Físicas**:
 - Diámetro: _____ mm

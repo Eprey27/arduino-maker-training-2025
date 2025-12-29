@@ -16,13 +16,12 @@
 
 **Objetivo**: Verificar que el motor funciona correctamente y medir su consumo real
 
-**Fecha**: [Pendiente]
+**Fecha**: 2024-12-28
 
 **Setup**:
 ```
-5V Fuente (+) ──→ Motor (+)
+5V Fuente (+) ──→ Multímetro (mA) ──→ Motor (+)
 Motor (-) ──→ GND Fuente
-Multímetro en serie para medir corriente
 ```
 
 **Predicciones**:
@@ -31,23 +30,39 @@ Multímetro en serie para medir corriente
 - Voltaje en bornes del motor: ~5V
 
 **Resultados Medidos**:
-- Voltaje motor: _____ V
-- Corriente consumo: _____ mA
-- Comportamiento: [ ] Suave [ ] Errático [ ] No arranca
-- Temperatura después de 30s: [ ] Frío [ ] Tibio [ ] Caliente
-- Ruido: [ ] Silencioso [ ] Normal [ ] Ruidoso
+
+- **Voltaje motor**: 4.985 V ✓
+- **Corriente consumo**: 84 mA ✓
+- **Comportamiento**: [X] Suave [ ] Errático [ ] No arranca
+- **Temperatura después de 30s**: [X] Frío [ ] Tibio [ ] Caliente
+  - Temperatura inicial (apagado): 22.5°C
+  - Temperatura después de 90s: 24.1°C
+  - Delta: +1.6°C (muy aceptable)
+- **Ruido**: [ ] Silencioso [X] Normal [ ] Ruidoso
 
 **Observaciones**:
-[Espacio para notas del estudiante]
+
+- Motor funciona excepcionalmente bien, incluso a voltajes muy bajos
+- Giro estable y suave en todo el rango de voltajes
+- Sin vibraciones ni ruidos anormales
+- El consumo de 84mA está dentro del rango esperado (60-90mA)
+- Incremento de temperatura mínimo, indica buena eficiencia
 
 **Voltaje Mínimo de Arranque**:
-- Reducir voltaje gradualmente hasta que motor se detenga
-- Voltaje mínimo medido: _____ V
 
-**Conclusión**: [ ] PASS [ ] FAIL [ ] NEEDS INVESTIGATION
+- **Voltaje mínimo para arranque**: 0.38 V
+- **Voltaje mínimo estable ultra-bajo**: 0.28 V (revoluciones muy bajas pero estables)
+- Nota: La capacidad de funcionar a voltajes tan bajos indica un motor de muy buena calidad
+
+**Conclusión**: ✅ **PASS**
 
 **Notas**:
-[Análisis de resultados]
+
+- El motor está en excelentes condiciones y es perfecto para el proyecto
+- Consumo de 84mA está dentro del límite de 100mA de la fuente, **pero con poco margen**
+- ⚠️ Recomendación: Considerar fuente externa para fases avanzadas, ya que picos de arranque podrían superar 100mA
+- El rango de operación tan amplio (0.28V - 5V) será excelente para caracterización de rendimiento
+- **Apuntado para Fase 5/6**: Crear contador óptico de RPM para generar gráfica Voltaje vs RPM vs Corriente
 
 ---
 
