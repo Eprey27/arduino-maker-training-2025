@@ -70,7 +70,7 @@ Motor (-) ──→ GND Fuente
 
 **Objetivo**: Verificar que el potenciómetro tiene variación suave de 0-10K
 
-**Fecha**: [Pendiente]
+**Fecha**: 2024-12-28
 
 **Setup**:
 - Multímetro en modo resistencia (Ω)
@@ -84,24 +84,41 @@ Motor (-) ──→ GND Fuente
 
 | Posición Pot | Pin1-Pin3 | Pin2-Pin1 | Pin2-Pin3 | Notas |
 |--------------|-----------|-----------|-----------|-------|
-| Extremo A    | _____ Ω   | _____ Ω   | _____ Ω   |       |
-| Centro       | _____ Ω   | _____ Ω   | _____ Ω   |       |
-| Extremo B    | _____ Ω   | _____ Ω   | _____ Ω   |       |
+| Extremo A    | 9.22 KΩ   | 1.2 Ω     | 9.23 KΩ   | Resistencia mínima en Pin2-Pin1 ✓ |
+| Centro       | 9.22 KΩ   | 4.875 KΩ  | 4.621 KΩ  | Suma: 9.496 KΩ (~9.22 KΩ) ✓ |
+| Extremo B    | 9.22 KΩ   | 9.22 KΩ   | 0.9 Ω     | Resistencia máxima en Pin2-Pin1 ✓ |
+
+**Análisis de mediciones**:
+- Resistencia total medida: **9.22 KΩ** (dentro de tolerancia ±20% para 10KΩ)
+- Resistencia mínima wiper: ~1 Ω (excelente, casi 0Ω)
+- Suma Pin2-Pin1 + Pin2-Pin3 en centro: 9.496 KΩ ≈ 9.22 KΩ total ✓
+- Variación suave y lineal observada
 
 **Dirección de rotación**:
-- Sentido horario: [ ] Aumenta [ ] Disminuye resistencia Pin2-Pin1
-- Sentido antihorario: [ ] Aumenta [ ] Disminuye resistencia Pin2-Pin1
+- Sentido horario: [X] Aumenta [ ] Disminuye resistencia Pin2-Pin1
+- Sentido antihorario: [ ] Aumenta [X] Disminuye resistencia Pin2-Pin1
 
 **Problemas detectados**:
 - [ ] Zonas muertas
 - [ ] Saltos en la resistencia
 - [ ] Ruido/scratching al girar
-- [ ] Ninguno
+- [X] Ninguno
 
-**Conclusión**: [ ] PASS [ ] FAIL [ ] NEEDS INVESTIGATION
+**Suavidad**: Giro suave y continuo, sin saltos ni zonas muertas
+
+**Conclusión**: ✅ **PASS**
 
 **Notas**:
-[Análisis de resultados]
+
+- Potenciómetro en perfecto estado de funcionamiento
+- Valor nominal 9.22 KΩ (tolerancia -7.8% respecto a 10KΩ nominal, dentro de especificación)
+- Taper lineal confirmado (centro ~50% de resistencia total)
+- Resistencia residual <2Ω en extremos (excelente calidad)
+- Configuración identificada:
+  - **Pin 1**: Extremo A (conectar a GND en circuito final)
+  - **Pin 2**: Wiper/Cursor (conectar a Gate MOSFET)
+  - **Pin 3**: Extremo B (conectar a 5V en circuito final)
+- Rotación horaria aumenta voltaje en wiper (cuando Pin3=5V, Pin1=GND)
 
 ---
 

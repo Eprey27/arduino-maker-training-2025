@@ -72,33 +72,39 @@ Tab (metal): Conectado internamente a DRAIN
 **Especificaciones Nominales**:
 - Resistencia: 10KΩ ±20% típico
 - Tipo: Rotativo
-- Taper: [Pendiente determinar - lineal o logarítmico]
+- Taper: Lineal (confirmado)
 - Potencia: 0.125W - 0.25W típico
 - Pines: 3 (dos extremos + wiper central)
 
-**Mediciones Reales**:
-- [Pendiente test de barrido]
-- Resistencia total (pin 1 a 3): _____ KΩ
-- Resistencia mínima (wiper a extremo): _____ Ω
-- Resistencia máxima (wiper a extremo): _____ KΩ
-- Variación suave: [ ] Sí [ ] No
-- Problemas detectados: [ ] Ninguno [ ] Zonas muertas [ ] Ruido
+**Mediciones Reales** (2024-12-28):
+
+- ✅ Test de barrido completado
+- **Resistencia total (pin 1 a 3)**: 9.22 KΩ (tolerancia -7.8%, dentro de ±20%)
+- **Resistencia mínima (wiper a extremo)**: 1.2 Ω (excelente)
+- **Resistencia máxima (wiper a extremo)**: 9.22 KΩ
+- **Resistencia en centro**: ~4.87 KΩ (50% del total, confirma taper lineal)
+- **Variación suave**: [X] Sí [ ] No
+- **Problemas detectados**: [X] Ninguno [ ] Zonas muertas [ ] Ruido
 
 **Pinout**:
-```
-Pin 1: Extremo A (conectar a 5V en nuestro circuito)
+
+```text
+Pin 1: Extremo A (conectar a GND en nuestro circuito)
 Pin 2: Wiper/Cursor (conectar a Gate MOSFET)
-Pin 3: Extremo B (conectar a GND en nuestro circuito)
+Pin 3: Extremo B (conectar a 5V en nuestro circuito)
 ```
 
 **Dirección de Rotación**:
-- Sentido horario: [Aumenta/Disminuye] resistencia Pin2-Pin1
-- Sentido antihorario: [Aumenta/Disminuye] resistencia Pin2-Pin1
+
+- Sentido horario: **Aumenta** resistencia Pin2-Pin1
+- Sentido antihorario: **Disminuye** resistencia Pin2-Pin1
 
 **Notas de Uso**:
+
 - Funciona como divisor de voltaje variable
-- Salida en wiper: 0-5V según posición
+- Salida en wiper: 0-5V según posición (cuando Pin3=5V, Pin1=GND)
 - Corriente típica: <0.5mA (despreciable)
+- Rotación horaria = más voltaje en wiper = motor más rápido (en configuración final)
 
 ---
 

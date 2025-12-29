@@ -100,6 +100,76 @@
 
 ---
 
+### Test 0.2: Potenciómetro Barrido - COMPLETADO ✅
+
+**Hora**: Tarde
+
+**Actividad**: Verificación individual del potenciómetro 10KΩ
+
+**Fase actual**: Fase 0 - Verificación de Componentes
+
+**Tests realizados**:
+
+- [X] Medición de resistencia total (Pin1-Pin3)
+- [X] Medición en extremo A (Pin2-Pin1 y Pin2-Pin3)
+- [X] Medición en posición central
+- [X] Medición en extremo B (Pin2-Pin1 y Pin2-Pin3)
+- [X] Test de suavidad al girar
+- [X] Identificación de dirección de rotación
+
+**Mediciones**:
+
+| Posición | Pin1-Pin3 | Pin2-Pin1 | Pin2-Pin3 |
+|----------|-----------|-----------|-----------|
+| Extremo A | 9.22 KΩ | 1.2 Ω | 9.23 KΩ |
+| Centro | 9.22 KΩ | 4.875 KΩ | 4.621 KΩ |
+| Extremo B | 9.22 KΩ | 9.22 KΩ | 0.9 Ω |
+
+**Análisis**:
+
+- Resistencia total: **9.22 KΩ** (tolerancia -7.8% del valor nominal, dentro de ±20% especificación)
+- Suma en centro: 4.875 + 4.621 = 9.496 KΩ ≈ 9.22 KΩ (pequeña diferencia por precisión de multímetro)
+- Resistencia residual <2Ω en extremos (calidad excelente)
+- Taper **lineal confirmado** (centro ≈ 50%)
+
+**Resultados**:
+
+- ✅ Potenciómetro funciona perfectamente
+- ✅ Variación suave y continua, sin saltos
+- ✅ Sin zonas muertas ni ruido al girar
+- ✅ Taper lineal ideal para control de velocidad
+- ✅ Resistencia residual muy baja en extremos
+
+**Aprendizajes**:
+
+- El potenciómetro funciona como divisor de voltaje variable
+- Con Pin1=GND y Pin3=5V, el wiper (Pin2) entrega 0-5V según posición
+- Rotación horaria aumenta resistencia Pin2-Pin1, por tanto aumenta voltaje en wiper
+- Taper lineal significa que la resistencia (y voltaje) cambia proporcionalmente con el ángulo de giro
+- La configuración correcta es: Pin1→GND, Pin2→Gate, Pin3→5V
+
+**Decisiones tomadas**:
+
+- ✅ Potenciómetro verificado y aprobado para el proyecto
+- 📝 Configuración identificada para circuito final:
+  - Pin 1 (Extremo A) → GND
+  - Pin 2 (Wiper) → MOSFET Gate
+  - Pin 3 (Extremo B) → 5V
+- 📝 Rotación horaria = más voltaje = motor más rápido
+
+**Próximos pasos**:
+
+1. Test 0.3: Verificación del MOSFET IRF520
+2. Completar Fase 0 antes de avanzar a integración de circuitos
+
+**Notas adicionales**:
+
+- Estudiante preguntó sobre función de cada pin y uso general del potenciómetro
+- Necesita explicación conceptual de cómo funciona como divisor de voltaje
+- Todas las mediciones fueron precisas y completas
+
+---
+
 ## Plantilla para Nuevas Entradas
 
 ```markdown
