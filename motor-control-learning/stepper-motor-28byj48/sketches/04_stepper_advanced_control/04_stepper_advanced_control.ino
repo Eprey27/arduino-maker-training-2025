@@ -105,7 +105,7 @@ void processCommand(char cmd) {
     case 'F':
       isRunning = true;
       direction = 1;
-      Serial.println("→ Rotación continua ADELANTE");
+      Serial.println(F("> Rotacion continua ADELANTE"));
       printSpeed();
       break;
 
@@ -113,7 +113,7 @@ void processCommand(char cmd) {
     case 'B':
       isRunning = true;
       direction = -1;
-      Serial.println("← Rotación continua ATRÁS");
+      Serial.println(F("< Rotacion continua ATRAS"));
       printSpeed();
       break;
 
@@ -121,54 +121,54 @@ void processCommand(char cmd) {
     case 'S':
       isRunning = false;
       stopMotor();
-      Serial.println("■ Motor DETENIDO");
+      Serial.println(F("# Motor DETENIDO"));
       printInfo();
       break;
 
     case '+':  // Aumentar velocidad
       if (delayTime > MIN_DELAY) {
         delayTime--;
-        Serial.println("▲ Velocidad aumentada");
+        Serial.println(F("+ Velocidad aumentada"));
         printSpeed();
       } else {
-        Serial.println("⚠ Velocidad máxima alcanzada");
+        Serial.println(F("! Velocidad maxima alcanzada"));
       }
       break;
 
     case '-':  // Disminuir velocidad
       if (delayTime < MAX_DELAY) {
         delayTime++;
-        Serial.println("▼ Velocidad disminuida");
+        Serial.println(F("- Velocidad disminuida"));
         printSpeed();
       } else {
-        Serial.println("⚠ Velocidad mínima alcanzada");
+        Serial.println(F("! Velocidad minima alcanzada"));
       }
       break;
 
     case 'r':  // Una revolución
     case 'R':
       isRunning = false;
-      Serial.println("↻ Ejecutando 1 revolución completa...");
+      Serial.println(F("@ Ejecutando 1 revolucion completa..."));
       rotateRevolutions(1);
-      Serial.println("✓ Completado");
+      Serial.println(F("OK Completado"));
       printInfo();
       break;
 
     case 'h':  // Media revolución
     case 'H':
       isRunning = false;
-      Serial.println("⟳ Ejecutando media revolución (180°)...");
+      Serial.println(F("@ Ejecutando media revolucion (180°)..."));
       rotateAngle(180);
-      Serial.println("✓ Completado");
+      Serial.println(F("OK Completado"));
       printInfo();
       break;
 
     case 'q':  // Cuarto de revolución
     case 'Q':
       isRunning = false;
-      Serial.println("⟲ Ejecutando cuarto de revolución (90°)...");
+      Serial.println(F("@ Ejecutando cuarto revolucion (90°)..."));
       rotateAngle(90);
-      Serial.println("✓ Completado");
+      Serial.println(F("OK Completado"));
       printInfo();
       break;
 
@@ -183,18 +183,18 @@ void processCommand(char cmd) {
     case '9':
       isRunning = false;
       int revs = cmd - '0';
-      Serial.print("↻ Ejecutando ");
+      Serial.print(F("@ Ejecutando "));
       Serial.print(revs);
-      Serial.println(" revoluciones...");
+      Serial.println(F(" revoluciones..."));
       rotateRevolutions(revs);
-      Serial.println("✓ Completado");
+      Serial.println(F("OK Completado"));
       printInfo();
       break;
 
     case 'a':  // Ángulo específico
     case 'A':
       isRunning = false;
-      Serial.println("Ingresa el ángulo en grados (0-360):");
+      Serial.println(F("Ingresa angulo en grados (0-360):"));
       waitForAngleInput();
       break;
 
@@ -213,9 +213,9 @@ void processCommand(char cmd) {
       break;
 
     default:
-      Serial.print("⚠ Comando desconocido: ");
+      Serial.print(F("! Comando desconocido: "));
       Serial.println(cmd);
-      Serial.println("Presiona '?' para ver comandos disponibles");
+      Serial.println(F("Presiona '?' para ver comandos"));
       break;
   }
 }
@@ -262,9 +262,9 @@ void rotateRevolutions(int revolutions) {
   unsigned long endTime = millis();
   float timeSeconds = (endTime - startTime) / 1000.0;
 
-  Serial.print("Tiempo: ");
+  Serial.print(F("Tiempo: "));
   Serial.print(timeSeconds, 2);
-  Serial.println(" segundos");
+  Serial.println(F(" seg"));
 }
 
 void rotateAngle(float degrees) {
@@ -287,14 +287,14 @@ void waitForAngleInput() {
   float angle = Serial.parseFloat();
 
   if (angle >= 0 && angle <= 360) {
-    Serial.print("Rotando ");
+    Serial.print(F("Rotando "));
     Serial.print(angle, 1);
-    Serial.println(" grados...");
+    Serial.println(F(" grados..."));
     rotateAngle(angle);
-    Serial.println("✓ Completado");
+    Serial.println(F("OK Completado"));
     printInfo();
   } else {
-    Serial.println("⚠ Ángulo inválido. Debe estar entre 0 y 360.");
+    Serial.println(F("! Angulo invalido. Debe estar 0-360."));
   }
 
   // Limpiar buffer serial
@@ -334,64 +334,64 @@ void printSpeed() {
 
 void printInfo() {
   Serial.println();
-  Serial.println("┌─────────────────────────────────┐");
-  Serial.println("│  ESTADO ACTUAL                  │");
-  Serial.println("├─────────────────────────────────┤");
+  Serial.println(F("==================================="));
+  Serial.println(F("  ESTADO ACTUAL"));
+  Serial.println(F("==================================="));
 
-  Serial.print("│  Pasos totales: ");
+  Serial.print(F("  Pasos totales: "));
   Serial.println(totalSteps);
 
-  Serial.print("│  Posición: ");
+  Serial.print(F("  Posicion: "));
   Serial.print(currentPosition, 2);
-  Serial.println("°");
+  Serial.println(F("°"));
 
   float revolutions = totalSteps / (float)STEPS_PER_REVOLUTION;
-  Serial.print("│  Revoluciones: ");
+  Serial.print(F("  Revoluciones: "));
   Serial.println(revolutions, 2);
 
-  Serial.print("│  Velocidad: ");
+  Serial.print(F("  Velocidad: "));
   float rpm = (1000.0 / delayTime / STEPS_PER_REVOLUTION) * 60.0;
   Serial.print(rpm, 2);
-  Serial.println(" RPM");
+  Serial.println(F(" RPM"));
 
-  Serial.print("│  Estado: ");
-  Serial.println(isRunning ? "EN MOVIMIENTO" : "DETENIDO");
+  Serial.print(F("  Estado: "));
+  Serial.println(isRunning ? F("EN MOVIMIENTO") : F("DETENIDO"));
 
   if (isRunning) {
-    Serial.print("│  Dirección: ");
-    Serial.println(direction == 1 ? "ADELANTE" : "ATRÁS");
+    Serial.print(F("  Direccion: "));
+    Serial.println(direction == 1 ? F("ADELANTE") : F("ATRAS"));
   }
 
-  Serial.println("└─────────────────────────────────┘");
+  Serial.println(F("==================================="));
   Serial.println();
 }
 
 void printWelcomeMessage() {
   Serial.println();
-  Serial.println("╔═══════════════════════════════════════╗");
-  Serial.println("║  Motor Paso a Paso 28BYJ-48          ║");
-  Serial.println("║  Control Avanzado Interactivo        ║");
-  Serial.println("╚═══════════════════════════════════════╝");
+  Serial.println(F("======================================="));
+  Serial.println(F("  Motor Paso a Paso 28BYJ-48"));
+  Serial.println(F("  Control Avanzado Interactivo"));
+  Serial.println(F("======================================="));
   Serial.println();
-  Serial.println("COMANDOS DISPONIBLES:");
-  Serial.println("─────────────────────");
-  Serial.println("  f/F : Rotación continua ADELANTE");
-  Serial.println("  b/B : Rotación continua ATRÁS");
-  Serial.println("  s/S : DETENER motor");
+  Serial.println(F("COMANDOS DISPONIBLES:"));
+  Serial.println(F("---------------------"));
+  Serial.println(F("  f/F : Rotacion continua ADELANTE"));
+  Serial.println(F("  b/B : Rotacion continua ATRAS"));
+  Serial.println(F("  s/S : DETENER motor"));
   Serial.println();
-  Serial.println("  +   : Aumentar velocidad");
-  Serial.println("  -   : Disminuir velocidad");
+  Serial.println(F("  +   : Aumentar velocidad"));
+  Serial.println(F("  -   : Disminuir velocidad"));
   Serial.println();
-  Serial.println("  r/R : 1 revolución completa (360°)");
-  Serial.println("  h/H : Media revolución (180°)");
-  Serial.println("  q/Q : Cuarto revolución (90°)");
-  Serial.println("  1-9 : N revoluciones completas");
-  Serial.println("  a/A : Ángulo específico (ingresar grados)");
+  Serial.println(F("  r/R : 1 revolucion completa (360°)"));
+  Serial.println(F("  h/H : Media revolucion (180°)"));
+  Serial.println(F("  q/Q : Cuarto revolucion (90°)"));
+  Serial.println(F("  1-9 : N revoluciones completas"));
+  Serial.println(F("  a/A : Angulo especifico (ingresar grados)"));
   Serial.println();
-  Serial.println("  i/I : Mostrar información del estado");
-  Serial.println("  ?   : Mostrar esta ayuda");
+  Serial.println(F("  i/I : Mostrar informacion del estado"));
+  Serial.println(F("  ?   : Mostrar esta ayuda"));
   Serial.println();
-  Serial.println("═══════════════════════════════════════");
+  Serial.println(F("======================================="));
   Serial.println();
   printSpeed();
   Serial.println();
