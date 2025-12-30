@@ -40,7 +40,7 @@
 #define IN4 11
 
 // Constantes del motor
-const int STEPS_PER_REVOLUTION = 2048;
+const int STEPS_PER_REVOLUTION = 4096;
 const float DEGREES_PER_STEP = 360.0 / STEPS_PER_REVOLUTION;
 
 // Secuencia Half-Step
@@ -181,14 +181,16 @@ void processCommand(char cmd) {
     case '7':
     case '8':
     case '9':
-      isRunning = false;
-      int revs = cmd - '0';
-      Serial.print(F("@ Ejecutando "));
-      Serial.print(revs);
-      Serial.println(F(" revoluciones..."));
-      rotateRevolutions(revs);
-      Serial.println(F("OK Completado"));
-      printInfo();
+      {
+        isRunning = false;
+        int revs = cmd - '0';
+        Serial.print(F("@ Ejecutando "));
+        Serial.print(revs);
+        Serial.println(F(" revoluciones..."));
+        rotateRevolutions(revs);
+        Serial.println(F("OK Completado"));
+        printInfo();
+      }
       break;
 
     case 'a':  // Ángulo específico

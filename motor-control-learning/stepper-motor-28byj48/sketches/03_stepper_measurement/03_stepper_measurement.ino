@@ -26,8 +26,8 @@
 #define IN4 11
 
 // Constantes del motor
-const int STEPS_PER_REVOLUTION = 2048;  // Half-step mode
-const float DEGREES_PER_STEP = 360.0 / STEPS_PER_REVOLUTION;  // ~0.176 grados por paso
+const int STEPS_PER_REVOLUTION = 4096;  // Half-step mode
+const float DEGREES_PER_STEP = 360.0 / STEPS_PER_REVOLUTION;  // ~0.088 grados por paso
 
 // Secuencia Half-Step
 const int halfStepSequence[8][4] = {

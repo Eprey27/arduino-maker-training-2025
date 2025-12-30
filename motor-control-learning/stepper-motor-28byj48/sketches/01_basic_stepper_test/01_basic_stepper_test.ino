@@ -79,10 +79,10 @@ void setup() {
 }
 
 void loop() {
-  // Ejecutar 1 revolución completa (2048 pasos en half-step)
+  // Ejecutar 1 revolución completa (4096 pasos en half-step)
   // luego hacer una pausa
 
-  if (stepsCompleted < 2048) {
+  if (stepsCompleted < 4096) {
     // Ejecutar un paso
     executeStep(currentStep);
 
@@ -94,9 +94,9 @@ void loop() {
 
     stepsCompleted++;
 
-    // Mostrar progreso cada 256 pasos (aproximadamente cada 45 grados)
-    if (stepsCompleted % 256 == 0) {
-      float degrees = (stepsCompleted / 2048.0) * 360.0;
+    // Mostrar progreso cada 512 pasos (aproximadamente cada 45 grados)
+    if (stepsCompleted % 512 == 0) {
+      float degrees = (stepsCompleted / 4096.0) * 360.0;
       Serial.print("Progreso: ");
       Serial.print(stepsCompleted);
       Serial.print(" pasos (");
@@ -157,8 +157,8 @@ void stopMotor() {
  *    - ¿Cuántos LEDs se encienden simultáneamente?
  *
  * 3. Modifica el número de pasos:
- *    - Cambia 2048 por 1024 (media revolución)
- *    - Cambia por 512 (cuarto de revolución)
+ *    - Cambia 4096 por 2048 (media revolución)
+ *    - Cambia por 1024 (cuarto de revolución)
  *
  * 4. Invierte la dirección:
  *    - En lugar de incrementar currentStep, decrémentalo

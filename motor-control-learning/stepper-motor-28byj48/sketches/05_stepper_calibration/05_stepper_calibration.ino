@@ -38,7 +38,7 @@
 #define IN4 11
 
 // Constantes TEÓRICAS del motor (valores iniciales)
-const int STEPS_PER_REV_THEORETICAL = 2048;  // Valor teórico en half-step
+const int STEPS_PER_REV_THEORETICAL = 4096;  // Valor ajustado basado en pruebas
 const int DELAY_MS = 2;  // Delay entre pasos
 
 // Secuencia Half-Step

@@ -25,8 +25,8 @@
 
 // Definir el número de pasos por revolución
 // Para el 28BYJ-48 con relación de reducción 64:1
-// En modo full-step: 32 pasos del motor × 64 reducción = 2048 pasos
-const int STEPS_PER_REVOLUTION = 2048;
+// En modo half-step: 32 × 2 × 64 = 4096 pasos
+const int STEPS_PER_REVOLUTION = 4096;
 
 // Inicializar la librería Stepper en los pines 8 a 11
 // El orden de los pines es: IN1, IN3, IN2, IN4
