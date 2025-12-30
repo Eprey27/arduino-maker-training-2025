@@ -243,15 +243,16 @@ void step(int steps) {
 }
 
 void rotateRevolutions(int revolutions) {
-  int steps = STEPS_PER_REVOLUTION * revolutions;
+  long steps = (long)STEPS_PER_REVOLUTION * revolutions;
   unsigned long startTime = millis();
 
-  for (int i = 0; i < steps; i++) {
+  for (long i = 0; i < steps; i++) {
     step(1);
     delay(delayTime);
 
     // Mostrar progreso cada 10%
-    if (i % (steps / 10) == 0) {
+    long progressInterval = steps / 10;
+    if (progressInterval > 0 && i % progressInterval == 0) {
       int progress = (i * 100) / steps;
       Serial.print(progress);
       Serial.println("%");
@@ -267,12 +268,12 @@ void rotateRevolutions(int revolutions) {
 }
 
 void rotateAngle(float degrees) {
-  int steps = (degrees * STEPS_PER_REVOLUTION) / 360.0;
+  long steps = ((long)degrees * STEPS_PER_REVOLUTION) / 360;
 
-  Serial.print("Pasos calculados: ");
+  Serial.print(F("Pasos calculados: "));
   Serial.println(steps);
 
-  for (int i = 0; i < steps; i++) {
+  for (long i = 0; i < steps; i++) {
     step(1);
     delay(delayTime);
   }
