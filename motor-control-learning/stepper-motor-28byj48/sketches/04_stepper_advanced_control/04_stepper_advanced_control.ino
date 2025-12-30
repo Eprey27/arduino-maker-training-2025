@@ -40,7 +40,7 @@
 #define IN4 11
 
 // Constantes del motor
-const int STEPS_PER_REVOLUTION = 4096;
+const int STEPS_PER_REVOLUTION = 4097;  // Valor calibrado empíricamente
 const float DEGREES_PER_STEP = 360.0 / STEPS_PER_REVOLUTION;
 
 // Secuencia Half-Step

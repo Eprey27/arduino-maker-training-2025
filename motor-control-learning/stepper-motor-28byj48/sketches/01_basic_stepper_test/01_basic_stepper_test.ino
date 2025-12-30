@@ -82,7 +82,7 @@ void loop() {
   // Ejecutar 1 revolución completa (4096 pasos en half-step)
   // luego hacer una pausa
 
-  if (stepsCompleted < 4096) {
+  if (stepsCompleted < 4097) {
     // Ejecutar un paso
     executeStep(currentStep);
 
@@ -96,7 +96,7 @@ void loop() {
 
     // Mostrar progreso cada 512 pasos (aproximadamente cada 45 grados)
     if (stepsCompleted % 512 == 0) {
-      float degrees = (stepsCompleted / 4096.0) * 360.0;
+      float degrees = (stepsCompleted / 4097.0) * 360.0;
       Serial.print("Progreso: ");
       Serial.print(stepsCompleted);
       Serial.print(" pasos (");

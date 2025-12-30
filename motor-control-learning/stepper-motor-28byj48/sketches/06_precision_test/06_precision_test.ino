@@ -33,7 +33,7 @@
 #define IN4 11
 
 // VALOR CALIBRADO - Ajusta este valor según tu calibración
-const long STEPS_PER_REVOLUTION = 4100;  // Tu valor calibrado
+const long STEPS_PER_REVOLUTION = 4097;  // Valor calibrado empíricamente
 const int DELAY_MS = 2;
 
 // Secuencia Half-Step
