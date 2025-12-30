@@ -306,7 +306,7 @@ void rotateSteps(int steps, int delayMs) {
 
     totalSteps++;
 
-    delayMicroseconds(delayMs * 1000);
+    delay(delayMs);
   }
 }
 
