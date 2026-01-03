@@ -1,47 +1,24 @@
 /*
- * Experimento 4: Control Avanzado del Motor Paso a Paso
+ * Experimento 4 (v2): Control Avanzado del Motor Paso a Paso
+ * 28BYJ-48 + ULN2003
  *
- * OBJETIVO:
- * - Control interactivo mediante Serial
- * - Cambio de dirección en tiempo real
- * - Velocidad variable ajustable
- * - Aceleración y desaceleración suaves
- * - Movimientos precisos por ángulo o pasos
- *
- * HARDWARE:
- * - Motor 28BYJ-48 (5V)
- * - Driver ULN2003APG
- * - Arduino UNO o ESP32
- *
- * CONEXIONES:
- * Arduino Pin 8  -> Driver IN1
- * Arduino Pin 9  -> Driver IN2
- * Arduino Pin 10 -> Driver IN3
- * Arduino Pin 11 -> Driver IN4
- *
- * COMANDOS SERIAL:
- * - 'f' : Adelante (Forward)
- * - 'b' : Atrás (Backward)
- * - 's' : Detener (Stop)
- * - '+' : Aumentar velocidad
- * - '-' : Disminuir velocidad
- * - 'r' : Una revolución completa
- * - 'h' : Media revolución (180°)
- * - 'q' : Cuarto de revolución (90°)
- * - '1'-'9' : Rotar N revoluciones
- * - 'a' : Rotar ángulo específico (ingresar grados)
- * - 'i' : Información del estado actual
+ * EXTRA (v2):
+ * - Aceleración/desaceleración trapezoidal en movimientos finitos
+ * - Stop suave en modo continuo
+ * - Ir a ángulo absoluto por camino corto ('g')
+ * - Secuencia demo ('x')
+ * - Límites opcionales ('l')
+ * - Jogging aproximado ('j' adelante, 'k' atrás)
  */
 
-// Definición de pines
 #define IN1 8
 #define IN2 9
 #define IN3 10
 #define IN4 11
 
-// Constantes del motor
-const int STEPS_PER_REVOLUTION = 4097;  // Valor calibrado empíricamente
-const float DEGREES_PER_STEP = 360.0 / STEPS_PER_REVOLUTION;
+// Constantes del motor (tu calibración)
+const int   STEPS_PER_REVOLUTION = 4097;
+const float DEGREES_PER_STEP     = 360.0f / STEPS_PER_REVOLUTION;
 
 // Secuencia Half-Step
 const int halfStepSequence[8][4] = {
@@ -56,260 +33,75 @@ const int halfStepSequence[8][4] = {
 };
 
 // Variables de control
-int currentStep = 0;
-int delayTime = 2;              // Delay entre pasos en ms
-bool isRunning = false;         // Motor en movimiento continuo
-int direction = 1;              // 1 = adelante, -1 = atrás
-unsigned long totalSteps = 0;   // Contador total de pasos
-float currentPosition = 0.0;    // Posición actual en grados
+int  currentStep      = 0;
+int  delayTime        = 2;     // objetivo (ms)
+int  direction        = 1;     // 1 adelante, -1 atrás
+bool isRunning        = false; // continuo (f/b)
+bool stopPending      = false; // stop suave en continuo
+
+unsigned long totalSteps = 0;
+float currentPosition = 0.0f;  // 0..360
 
 // Límites de velocidad
-const int MIN_DELAY = 1;        // Máxima velocidad (1ms)
-const int MAX_DELAY = 20;       // Mínima velocidad (20ms)
+const int MIN_DELAY = 1;   // más rápido
+const int MAX_DELAY = 20;  // más lento
 
-void setup() {
-  Serial.begin(115200);
+// Movimiento suave (rampas)
+const int START_DELAY_FOR_RAMPS = 20;   // delay inicial en rampas (ms)
+const int ACCEL_STEPS_DEFAULT   = 600;  // pasos para acelerar (se recorta según movimiento)
 
-  // Configurar pines
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
+// Jogging aproximado
+bool jogging = false;
+unsigned long lastJogMs = 0;
+const unsigned long JOG_TIMEOUT_MS = 250; // si no llegan 'j/k' en este tiempo, frena y para
 
-  stopMotor();
+// Límites (opcional)
+bool limitsEnabled = false;
+// Rango en grados "signed": [-180..180]. Ajusta a tu caso real si quieres limitar.
+const float LIMIT_MIN_SIGNED = -180.0f;
+const float LIMIT_MAX_SIGNED =  180.0f;
 
-  // Mensaje de bienvenida
-  printWelcomeMessage();
+// Estado interno del continuo (para rampa)
+int runDelay = START_DELAY_FOR_RAMPS;
+
+// ============================
+// Utilidades
+// ============================
+
+static inline float normalize360(float deg) {
+  while (deg >= 360.0f) deg -= 360.0f;
+  while (deg < 0.0f)    deg += 360.0f;
+  return deg;
 }
 
-void loop() {
-  // Procesar comandos seriales
-  if (Serial.available() > 0) {
-    char command = Serial.read();
-    processCommand(command);
-  }
-
-  // Si el motor está en modo continuo, ejecutar pasos
-  if (isRunning) {
-    step(1);
-    delay(delayTime);
-  }
+static inline float toSignedDeg(float deg0_360) {
+  // 0..360 -> (-180..180]
+  if (deg0_360 > 180.0f) deg0_360 -= 360.0f;
+  return deg0_360;
 }
 
-// ============================================
-// Procesamiento de comandos
-// ============================================
-void processCommand(char cmd) {
-  switch (cmd) {
-    case 'f':  // Forward
-    case 'F':
-      isRunning = true;
-      direction = 1;
-      Serial.println(F("> Rotacion continua ADELANTE"));
-      printSpeed();
-      break;
-
-    case 'b':  // Backward
-    case 'B':
-      isRunning = true;
-      direction = -1;
-      Serial.println(F("< Rotacion continua ATRAS"));
-      printSpeed();
-      break;
-
-    case 's':  // Stop
-    case 'S':
-      isRunning = false;
-      stopMotor();
-      Serial.println(F("# Motor DETENIDO"));
-      printInfo();
-      break;
-
-    case '+':  // Aumentar velocidad
-      if (delayTime > MIN_DELAY) {
-        delayTime--;
-        Serial.println(F("+ Velocidad aumentada"));
-        printSpeed();
-      } else {
-        Serial.println(F("! Velocidad maxima alcanzada"));
-      }
-      break;
-
-    case '-':  // Disminuir velocidad
-      if (delayTime < MAX_DELAY) {
-        delayTime++;
-        Serial.println(F("- Velocidad disminuida"));
-        printSpeed();
-      } else {
-        Serial.println(F("! Velocidad minima alcanzada"));
-      }
-      break;
-
-    case 'r':  // Una revolución
-    case 'R':
-      isRunning = false;
-      Serial.println(F("@ Ejecutando 1 revolucion completa..."));
-      rotateRevolutions(1);
-      Serial.println(F("OK Completado"));
-      printInfo();
-      break;
-
-    case 'h':  // Media revolución
-    case 'H':
-      isRunning = false;
-      Serial.println(F("@ Ejecutando media revolucion (180°)..."));
-      rotateAngle(180);
-      Serial.println(F("OK Completado"));
-      printInfo();
-      break;
-
-    case 'q':  // Cuarto de revolución
-    case 'Q':
-      isRunning = false;
-      Serial.println(F("@ Ejecutando cuarto revolucion (90°)..."));
-      rotateAngle(90);
-      Serial.println(F("OK Completado"));
-      printInfo();
-      break;
-
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':
-      {
-        isRunning = false;
-        int revs = cmd - '0';
-        Serial.print(F("@ Ejecutando "));
-        Serial.print(revs);
-        Serial.println(F(" revoluciones..."));
-        rotateRevolutions(revs);
-        Serial.println(F("OK Completado"));
-        printInfo();
-      }
-      break;
-
-    case 'a':  // Ángulo específico
-    case 'A':
-      isRunning = false;
-      Serial.println(F("Ingresa angulo en grados (0-360):"));
-      waitForAngleInput();
-      break;
-
-    case 'i':  // Información
-    case 'I':
-      printInfo();
-      break;
-
-    case '?':  // Ayuda
-      printWelcomeMessage();
-      break;
-
-    case '\n':
-    case '\r':
-      // Ignorar caracteres de nueva línea
-      break;
-
-    default:
-      Serial.print(F("! Comando desconocido: "));
-      Serial.println(cmd);
-      Serial.println(F("Presiona '?' para ver comandos"));
-      break;
-  }
+static inline int clampInt(int v, int lo, int hi) {
+  if (v < lo) return lo;
+  if (v > hi) return hi;
+  return v;
 }
 
-// ============================================
-// Funciones de movimiento
-// ============================================
-
-void step(int steps) {
-  for (int i = 0; i < abs(steps); i++) {
-    executeStep(currentStep);
-
-    currentStep += (steps > 0 ? direction : -direction);
-
-    if (currentStep >= 8) currentStep = 0;
-    if (currentStep < 0) currentStep = 7;
-
-    totalSteps++;
-    currentPosition += DEGREES_PER_STEP * direction;
-
-    // Normalizar posición a 0-360 grados
-    while (currentPosition >= 360.0) currentPosition -= 360.0;
-    while (currentPosition < 0.0) currentPosition += 360.0;
-  }
+static inline int lerpDelay(int a, int b, float t) {
+  // t: 0..1
+  float v = a + (b - a) * t;
+  if (v < 0) v = 0;
+  return (int)(v + 0.5f);
 }
 
-void rotateRevolutions(int revolutions) {
-  long steps = (long)STEPS_PER_REVOLUTION * revolutions;
-  unsigned long startTime = millis();
+// ============================
+// Motor low-level
+// ============================
 
-  for (long i = 0; i < steps; i++) {
-    step(1);
-    delay(delayTime);
-
-    // Mostrar progreso cada 10%
-    long progressInterval = steps / 10;
-    if (progressInterval > 0 && i % progressInterval == 0) {
-      int progress = (i * 100) / steps;
-      Serial.print(progress);
-      Serial.println("%");
-    }
-  }
-
-  unsigned long endTime = millis();
-  float timeSeconds = (endTime - startTime) / 1000.0;
-
-  Serial.print(F("Tiempo: "));
-  Serial.print(timeSeconds, 2);
-  Serial.println(F(" seg"));
-}
-
-void rotateAngle(float degrees) {
-  long steps = ((long)degrees * STEPS_PER_REVOLUTION) / 360;
-
-  Serial.print(F("Pasos calculados: "));
-  Serial.println(steps);
-
-  for (long i = 0; i < steps; i++) {
-    step(1);
-    delay(delayTime);
-  }
-}
-
-void waitForAngleInput() {
-  while (!Serial.available()) {
-    delay(10);
-  }
-
-  float angle = Serial.parseFloat();
-
-  if (angle >= 0 && angle <= 360) {
-    Serial.print(F("Rotando "));
-    Serial.print(angle, 1);
-    Serial.println(F(" grados..."));
-    rotateAngle(angle);
-    Serial.println(F("OK Completado"));
-    printInfo();
-  } else {
-    Serial.println(F("! Angulo invalido. Debe estar 0-360."));
-  }
-
-  // Limpiar buffer serial
-  while (Serial.available()) {
-    Serial.read();
-  }
-}
-
-void executeStep(int step) {
-  digitalWrite(IN1, halfStepSequence[step][0]);
-  digitalWrite(IN2, halfStepSequence[step][1]);
-  digitalWrite(IN3, halfStepSequence[step][2]);
-  digitalWrite(IN4, halfStepSequence[step][3]);
+void executeStep(int stepIndex) {
+  digitalWrite(IN1, halfStepSequence[stepIndex][0]);
+  digitalWrite(IN2, halfStepSequence[stepIndex][1]);
+  digitalWrite(IN3, halfStepSequence[stepIndex][2]);
+  digitalWrite(IN4, halfStepSequence[stepIndex][3]);
 }
 
 void stopMotor() {
@@ -319,19 +111,173 @@ void stopMotor() {
   digitalWrite(IN4, LOW);
 }
 
-// ============================================
-// Funciones de información
-// ============================================
+bool canStep(int dir) {
+  if (!limitsEnabled) return true;
+
+  float nextPos = normalize360(currentPosition + DEGREES_PER_STEP * dir);
+  float nextSigned = toSignedDeg(nextPos);
+
+  return (nextSigned >= LIMIT_MIN_SIGNED && nextSigned <= LIMIT_MAX_SIGNED);
+}
+
+bool stepOnce(int dir) {
+  if (!canStep(dir)) return false;
+
+  executeStep(currentStep);
+
+  currentStep += dir;
+  if (currentStep >= 8) currentStep = 0;
+  if (currentStep < 0)  currentStep = 7;
+
+  totalSteps++;
+  currentPosition = normalize360(currentPosition + DEGREES_PER_STEP * dir);
+  return true;
+}
+
+// ============================
+// Movimiento con rampas
+// ============================
+
+bool moveStepsTrapezoid(long steps, int dir) {
+  if (steps <= 0) return true;
+
+  int targetDelay = clampInt(delayTime, MIN_DELAY, MAX_DELAY);
+  int startDelay  = max(targetDelay, START_DELAY_FOR_RAMPS);
+
+  long accelSteps = min((long)ACCEL_STEPS_DEFAULT, steps / 2);
+  long decelSteps = accelSteps; // simétrico
+  long cruiseStart = accelSteps;
+  long cruiseEnd   = steps - decelSteps;
+
+  for (long i = 0; i < steps; i++) {
+    if (!stepOnce(dir)) {
+      Serial.println(F("! LIMITE alcanzado: movimiento abortado"));
+      stopMotor();
+      return false;
+    }
+
+    int d = targetDelay;
+
+    if (accelSteps > 0 && i < cruiseStart) {
+      float t = (float)i / (float)accelSteps; // 0..1
+      d = lerpDelay(startDelay, targetDelay, t);
+    } else if (decelSteps > 0 && i >= cruiseEnd) {
+      float t = (float)(i - cruiseEnd) / (float)decelSteps; // 0..1
+      d = lerpDelay(targetDelay, startDelay, t);
+    }
+
+    delay(d);
+  }
+
+  return true;
+}
+
+bool rotateAngleSmooth(float degrees) {
+  degrees = constrain(degrees, 0.0f, 360.0f);
+  long steps = (long)(degrees / DEGREES_PER_STEP + 0.5f);
+
+  Serial.print(F("Pasos calculados: "));
+  Serial.println(steps);
+
+  return moveStepsTrapezoid(steps, direction);
+}
+
+bool rotateRevolutionsSmooth(int revolutions) {
+  if (revolutions <= 0) return true;
+
+  long steps = (long)STEPS_PER_REVOLUTION * revolutions;
+  unsigned long startTime = millis();
+
+  long progressInterval = steps / 10;
+
+  for (long i = 0; i < steps; i++) {
+    if (!stepOnce(direction)) {
+      Serial.println(F("! LIMITE alcanzado: movimiento abortado"));
+      stopMotor();
+      return false;
+    }
+
+    // Delay con rampa trapezoidal (reutilizamos lógica simple)
+    int targetDelay = clampInt(delayTime, MIN_DELAY, MAX_DELAY);
+    int startDelay  = max(targetDelay, START_DELAY_FOR_RAMPS);
+
+    long accelSteps = min((long)ACCEL_STEPS_DEFAULT, steps / 2);
+    long decelSteps = accelSteps;
+    long cruiseStart = accelSteps;
+    long cruiseEnd   = steps - decelSteps;
+
+    int d = targetDelay;
+    if (accelSteps > 0 && i < cruiseStart) {
+      float t = (float)i / (float)accelSteps;
+      d = lerpDelay(startDelay, targetDelay, t);
+    } else if (decelSteps > 0 && i >= cruiseEnd) {
+      float t = (float)(i - cruiseEnd) / (float)decelSteps;
+      d = lerpDelay(targetDelay, startDelay, t);
+    }
+
+    delay(d);
+
+    if (progressInterval > 0 && i % progressInterval == 0) {
+      int progress = (int)((i * 100L) / steps);
+      Serial.print(progress);
+      Serial.println("%");
+    }
+  }
+
+  unsigned long endTime = millis();
+  float timeSeconds = (endTime - startTime) / 1000.0f;
+  Serial.print(F("Tiempo: "));
+  Serial.print(timeSeconds, 2);
+  Serial.println(F(" seg"));
+
+  return true;
+}
+
+bool moveToAbsoluteAngle(float targetDeg) {
+  targetDeg = normalize360(targetDeg);
+
+  // delta en rango (-180..180]
+  float delta = targetDeg - currentPosition;
+  while (delta > 180.0f)  delta -= 360.0f;
+  while (delta <= -180.0f) delta += 360.0f;
+
+  int dir = (delta >= 0.0f) ? 1 : -1;
+  long steps = (long)(fabs(delta) / DEGREES_PER_STEP + 0.5f);
+
+  Serial.print(F("Delta: "));
+  Serial.print(delta, 2);
+  Serial.print(F("° | Dir: "));
+  Serial.print(dir == 1 ? F("ADELANTE") : F("ATRAS"));
+  Serial.print(F(" | Pasos: "));
+  Serial.println(steps);
+
+  return moveStepsTrapezoid(steps, dir);
+}
+
+// ============================
+// Serial input helpers
+// ============================
+
+float readFloatBlocking() {
+  while (!Serial.available()) delay(10);
+  float v = Serial.parseFloat();
+  while (Serial.available()) Serial.read(); // limpiar buffer
+  return v;
+}
+
+// ============================
+// Info
+// ============================
 
 void printSpeed() {
-  float stepsPerSecond = 1000.0 / delayTime;
-  float rpm = (stepsPerSecond / STEPS_PER_REVOLUTION) * 60.0;
+  float stepsPerSecond = 1000.0f / max(1, delayTime);
+  float rpm = (stepsPerSecond / STEPS_PER_REVOLUTION) * 60.0f;
 
-  Serial.print("  Delay: ");
+  Serial.print(F("  Delay obj: "));
   Serial.print(delayTime);
-  Serial.print(" ms | Velocidad: ");
+  Serial.print(F(" ms | Velocidad aprox: "));
   Serial.print(rpm, 2);
-  Serial.println(" RPM");
+  Serial.println(F(" RPM"));
 }
 
 void printInfo() {
@@ -347,14 +293,13 @@ void printInfo() {
   Serial.print(currentPosition, 2);
   Serial.println(F("°"));
 
-  float revolutions = totalSteps / (float)STEPS_PER_REVOLUTION;
-  Serial.print(F("  Revoluciones: "));
-  Serial.println(revolutions, 2);
+  Serial.print(F("  Posicion signed: "));
+  Serial.print(toSignedDeg(currentPosition), 2);
+  Serial.println(F("°"));
 
-  Serial.print(F("  Velocidad: "));
-  float rpm = (1000.0 / delayTime / STEPS_PER_REVOLUTION) * 60.0;
-  Serial.print(rpm, 2);
-  Serial.println(F(" RPM"));
+  float revolutions = totalSteps / (float)STEPS_PER_REVOLUTION;
+  Serial.print(F("  Revoluciones (acum): "));
+  Serial.println(revolutions, 2);
 
   Serial.print(F("  Estado: "));
   Serial.println(isRunning ? F("EN MOVIMIENTO") : F("DETENIDO"));
@@ -364,6 +309,9 @@ void printInfo() {
     Serial.println(direction == 1 ? F("ADELANTE") : F("ATRAS"));
   }
 
+  Serial.print(F("  Limites: "));
+  Serial.println(limitsEnabled ? F("ACTIVOS") : F("INACTIVOS"));
+
   Serial.println(F("==================================="));
   Serial.println();
 }
@@ -371,54 +319,302 @@ void printInfo() {
 void printWelcomeMessage() {
   Serial.println();
   Serial.println(F("======================================="));
-  Serial.println(F("  Motor Paso a Paso 28BYJ-48"));
-  Serial.println(F("  Control Avanzado Interactivo"));
+  Serial.println(F("  28BYJ-48 Control Avanzado (v2)"));
   Serial.println(F("======================================="));
   Serial.println();
-  Serial.println(F("COMANDOS DISPONIBLES:"));
-  Serial.println(F("---------------------"));
-  Serial.println(F("  f/F : Rotacion continua ADELANTE"));
-  Serial.println(F("  b/B : Rotacion continua ATRAS"));
-  Serial.println(F("  s/S : DETENER motor"));
-  Serial.println();
-  Serial.println(F("  +   : Aumentar velocidad"));
-  Serial.println(F("  -   : Disminuir velocidad"));
-  Serial.println();
-  Serial.println(F("  r/R : 1 revolucion completa (360°)"));
-  Serial.println(F("  h/H : Media revolucion (180°)"));
-  Serial.println(F("  q/Q : Cuarto revolucion (90°)"));
-  Serial.println(F("  1-9 : N revoluciones completas"));
-  Serial.println(F("  a/A : Angulo especifico (ingresar grados)"));
-  Serial.println();
-  Serial.println(F("  i/I : Mostrar informacion del estado"));
-  Serial.println(F("  ?   : Mostrar esta ayuda"));
-  Serial.println();
-  Serial.println(F("======================================="));
+  Serial.println(F("COMANDOS:"));
+  Serial.println(F("  f/F : continuo ADELANTE"));
+  Serial.println(F("  b/B : continuo ATRAS"));
+  Serial.println(F("  s/S : STOP suave"));
+  Serial.println(F("  +   : mas velocidad"));
+  Serial.println(F("  -   : menos velocidad"));
+  Serial.println(F("  r/R : 1 revolucion (360) con rampas"));
+  Serial.println(F("  h/H : 180 con rampas"));
+  Serial.println(F("  q/Q : 90 con rampas"));
+  Serial.println(F("  1-9 : N revoluciones con rampas"));
+  Serial.println(F("  a/A : angulo (0-360) con rampas"));
+  Serial.println(F("  g/G : ir a angulo ABSOLUTO (0-360) camino corto"));
+  Serial.println(F("  x/X : secuencia demo (90 CW, pausa, 180 CCW, pausa, 90 CW)"));
+  Serial.println(F("  l/L : toggle limites"));
+  Serial.println(F("  j   : jog adelante (enviar repetido)"));
+  Serial.println(F("  k   : jog atras (enviar repetido)"));
+  Serial.println(F("  i/I : info"));
+  Serial.println(F("  ?   : ayuda"));
   Serial.println();
   printSpeed();
   Serial.println();
 }
 
-/*
- * EJERCICIOS AVANZADOS:
- *
- * 1. Aceleración suave:
- *    - Modifica rotateRevolutions() para que aumente gradualmente la velocidad
- *    - Empieza lento y acelera hasta la velocidad configurada
- *
- * 2. Posicionamiento absoluto:
- *    - Crea un comando para ir a una posición absoluta en grados
- *    - El motor debería tomar el camino más corto
- *
- * 3. Secuencias programadas:
- *    - Crea una función que ejecute una secuencia predefinida
- *    - Ejemplo: 90° CW, pausa, 180° CCW, pausa, 90° CW
- *
- * 4. Límites de movimiento:
- *    - Implementa límites de posición (ej: -180° a +180°)
- *    - El motor no debe pasar de estos límites
- *
- * 5. Modo jogging:
- *    - Mantén presionada una tecla para movimiento continuo
- *    - Al soltar, el motor se detiene suavemente
- */
+// ============================
+// Control continuo
+// ============================
+
+void startContinuous(int dir) {
+  jogging = false;
+  isRunning = true;
+  stopPending = false;
+  direction = (dir >= 0) ? 1 : -1;
+
+  int targetDelay = clampInt(delayTime, MIN_DELAY, MAX_DELAY);
+  runDelay = max(targetDelay, START_DELAY_FOR_RAMPS); // empieza lento y acelera
+}
+
+void requestStopSmooth() {
+  stopPending = true;
+  jogging = false;
+}
+
+// ============================
+// Commands
+// ============================
+
+void processCommand(char cmd) {
+  switch (cmd) {
+    case 'f':
+    case 'F':
+      startContinuous(1);
+      Serial.println(F("> Continuo ADELANTE"));
+      printSpeed();
+      break;
+
+    case 'b':
+    case 'B':
+      startContinuous(-1);
+      Serial.println(F("< Continuo ATRAS"));
+      printSpeed();
+      break;
+
+    case 's':
+    case 'S':
+      if (isRunning) {
+        Serial.println(F("# STOP suave"));
+        requestStopSmooth();
+      } else {
+        stopMotor();
+        Serial.println(F("# Motor ya estaba detenido"));
+        printInfo();
+      }
+      break;
+
+    case '+':
+      delayTime = clampInt(delayTime - 1, MIN_DELAY, MAX_DELAY);
+      Serial.println(F("+ Velocidad aumentada"));
+      printSpeed();
+      break;
+
+    case '-':
+      delayTime = clampInt(delayTime + 1, MIN_DELAY, MAX_DELAY);
+      Serial.println(F("- Velocidad disminuida"));
+      printSpeed();
+      break;
+
+    case 'r':
+    case 'R':
+      isRunning = false; jogging = false; stopPending = false;
+      Serial.println(F("@ 1 revolucion completa..."));
+      rotateRevolutionsSmooth(1);
+      Serial.println(F("OK"));
+      printInfo();
+      break;
+
+    case 'h':
+    case 'H':
+      isRunning = false; jogging = false; stopPending = false;
+      Serial.println(F("@ 180 grados..."));
+      direction = 1; // usa direction actual si quieres, aquí fijo a 1
+      rotateAngleSmooth(180.0f);
+      Serial.println(F("OK"));
+      printInfo();
+      break;
+
+    case 'q':
+    case 'Q':
+      isRunning = false; jogging = false; stopPending = false;
+      Serial.println(F("@ 90 grados..."));
+      direction = 1;
+      rotateAngleSmooth(90.0f);
+      Serial.println(F("OK"));
+      printInfo();
+      break;
+
+    case '1': case '2': case '3': case '4': case '5':
+    case '6': case '7': case '8': case '9': {
+      isRunning = false; jogging = false; stopPending = false;
+      int revs = cmd - '0';
+      Serial.print(F("@ "));
+      Serial.print(revs);
+      Serial.println(F(" revoluciones..."));
+      rotateRevolutionsSmooth(revs);
+      Serial.println(F("OK"));
+      printInfo();
+      break;
+    }
+
+    case 'a':
+    case 'A': {
+      isRunning = false; jogging = false; stopPending = false;
+      Serial.println(F("Ingresa angulo (0-360):"));
+      float angle = readFloatBlocking();
+      if (angle >= 0.0f && angle <= 360.0f) {
+        Serial.print(F("Rotando "));
+        Serial.print(angle, 1);
+        Serial.println(F(" grados..."));
+        rotateAngleSmooth(angle);
+        Serial.println(F("OK"));
+        printInfo();
+      } else {
+        Serial.println(F("! Angulo invalido (0-360)"));
+      }
+      break;
+    }
+
+    case 'g':
+    case 'G': {
+      isRunning = false; jogging = false; stopPending = false;
+      Serial.println(F("Ingresa angulo ABSOLUTO (0-360):"));
+      float target = readFloatBlocking();
+      if (target >= 0.0f && target <= 360.0f) {
+        Serial.print(F("Ir a "));
+        Serial.print(target, 1);
+        Serial.println(F(" grados (camino corto)..."));
+        moveToAbsoluteAngle(target);
+        Serial.println(F("OK"));
+        printInfo();
+      } else {
+        Serial.println(F("! Angulo invalido (0-360)"));
+      }
+      break;
+    }
+
+    case 'x':
+    case 'X': {
+      isRunning = false; jogging = false; stopPending = false;
+      Serial.println(F("@ Secuencia demo: 90 CW, pausa, 180 CCW, pausa, 90 CW"));
+      direction = 1;
+      moveStepsTrapezoid((long)(90.0f / DEGREES_PER_STEP + 0.5f),  1);
+      delay(400);
+      moveStepsTrapezoid((long)(180.0f / DEGREES_PER_STEP + 0.5f), -1);
+      delay(400);
+      moveStepsTrapezoid((long)(90.0f / DEGREES_PER_STEP + 0.5f),  1);
+      Serial.println(F("OK"));
+      printInfo();
+      break;
+    }
+
+    case 'l':
+    case 'L':
+      limitsEnabled = !limitsEnabled;
+      Serial.print(F("# Limites: "));
+      Serial.println(limitsEnabled ? F("ACTIVOS") : F("INACTIVOS"));
+      printInfo();
+      break;
+
+    case 'j': { // jog adelante (hay que reenviar para “mantener”)
+      jogging = true;
+      isRunning = true;
+      stopPending = false;
+      direction = 1;
+      lastJogMs = millis();
+      if (runDelay < delayTime) runDelay = delayTime;
+      runDelay = max(runDelay, START_DELAY_FOR_RAMPS);
+      Serial.println(F("> Jog ADELANTE (envia 'j' repetido)"));
+      break;
+    }
+
+    case 'k': { // jog atras (hay que reenviar para “mantener”)
+      jogging = true;
+      isRunning = true;
+      stopPending = false;
+      direction = -1;
+      lastJogMs = millis();
+      if (runDelay < delayTime) runDelay = delayTime;
+      runDelay = max(runDelay, START_DELAY_FOR_RAMPS);
+      Serial.println(F("< Jog ATRAS (envia 'k' repetido)"));
+      break;
+    }
+
+    case 'i':
+    case 'I':
+      printInfo();
+      break;
+
+    case '?':
+      printWelcomeMessage();
+      break;
+
+    case '\n':
+    case '\r':
+      break;
+
+    default:
+      Serial.print(F("! Comando desconocido: "));
+      Serial.println(cmd);
+      Serial.println(F("Presiona '?'"));
+      break;
+  }
+}
+
+// ============================
+// Arduino setup/loop
+// ============================
+
+void setup() {
+  Serial.begin(115200);
+  Serial.setTimeout(15000);
+
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  stopMotor();
+  printWelcomeMessage();
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    char command = Serial.read();
+    processCommand(command);
+  }
+
+  // Si estamos en jogging, si no llegan repetidos, frenamos
+  if (jogging && (millis() - lastJogMs) > JOG_TIMEOUT_MS) {
+    requestStopSmooth();
+  }
+
+  if (isRunning) {
+    // step con control de rampa simple en continuo
+    if (!stepOnce(direction)) {
+      Serial.println(F("! LIMITE alcanzado: motor detenido"));
+      isRunning = false;
+      jogging = false;
+      stopPending = false;
+      stopMotor();
+      printInfo();
+      return;
+    }
+
+    delay(runDelay);
+
+    int targetDelay = clampInt(delayTime, MIN_DELAY, MAX_DELAY);
+    int startDelay  = max(targetDelay, START_DELAY_FOR_RAMPS);
+
+    if (stopPending) {
+      // frenado: subir delay hasta startDelay y parar
+      if (runDelay < startDelay) {
+        runDelay++;
+      } else {
+        isRunning = false;
+        stopPending = false;
+        jogging = false;
+        stopMotor();
+        Serial.println(F("# Motor DETENIDO (suave)"));
+        printInfo();
+      }
+    } else {
+      // aceleración/seguimiento: bajar delay hacia objetivo
+      if (runDelay > targetDelay) runDelay--;
+      if (runDelay < targetDelay) runDelay++; // por si cambias delayTime a peor en caliente
+    }
+  }
+}

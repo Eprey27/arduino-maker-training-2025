@@ -48,7 +48,53 @@ Desarrollar un sistema de calibración de alta precisión que elimine el error h
 
 ## Opciones de Sensores
 
-### Opción 1: Encoder Rotatorio Óptico (RECOMENDADO)
+### ⭐ Opción 1: Photo Interrupter IR (IMPLEMENTADO - RECOMENDADO PARA EMPEZAR)
+
+**Sensor:** Photo Interrupter del kit Keyestudio / Adafruit
+
+**Características:**
+
+- Tipo: Fork-type IR sensor (LED IR + Fototransistor)
+- Resolución: 1 revolución completa (o N ranuras en disco)
+- Salida: Digital (HIGH/LOW)
+- Sin contacto
+- Costo: ~$1-2 USD
+- **Ya disponible en el kit de sensores**
+
+**Ventajas:**
+
+- ✓ Muy económico y simple
+- ✓ Montaje sencillo (disco de cartón + sensor)
+- ✓ Suficiente para calibrar STEPS_PER_REVOLUTION
+- ✓ No requiere programación I2C
+- ✓ Ideal para aprender
+
+**Desventajas:**
+
+- Resolución limitada (solo cuenta revoluciones completas)
+- No mide ángulos intermedios
+- Sensible a luz ambiental fuerte
+- Requiere disco codificador manual
+
+**Precisión alcanzable:**
+
+- Conteo de revoluciones: Exacto (error <0.1%)
+- Calibración de steps/rev: ±1-5 pasos
+- Para disco con 1 ranura: 1 pulso/revolución
+- Para disco con N ranuras: N pulsos/revolución
+
+**Sketches:**
+
+- `10_ir_sensor_verification.ino` - Verificar sensor ✓ CREADO
+- `11_ir_auto_calibration.ino` - Calibración automática ✓ CREADO
+
+**Documentación:**
+
+- `hardware/ir_sensor_mounting.md` - Guía de montaje ✓ CREADA
+
+---
+
+### Opción 2: AS5600 Encoder Magnético (AVANZADO - IMPLEMENTADO)
 
 **Sensor sugerido:** AS5600 (Encoder Magnético de 12 bits)
 
@@ -70,11 +116,24 @@ Desarrollar un sistema de calibración de alta precisión que elimine el error h
 - Limitado a una revolución (0-360°)
 
 **Precisión alcanzable:**
-```
+
+```text
 Resolución: 360° / 4096 = 0.088° = 5.27' = 316.4"
 ```
 
-### Opción 2: Encoder Incremental de Alta Resolución
+**Sketches:**
+
+- `08_sensor_verification.ino` - Verificar sensor AS5600 ✓ CREADO
+- `07_auto_calibration_system.ino` - Calibración automática ✓ CREADO
+
+**Documentación:**
+
+- `hardware/as5600_mounting.md` - Guía de montaje ✓ CREADA
+- `hardware/sensor_wiring.md` - Diagrama de conexiones ✓ CREADO
+
+---
+
+### Opción 3: Encoder Incremental de Alta Resolución
 
 **Sensor sugerido:** Encoder óptico 600 PPR (Pulsos Por Revolución)
 
