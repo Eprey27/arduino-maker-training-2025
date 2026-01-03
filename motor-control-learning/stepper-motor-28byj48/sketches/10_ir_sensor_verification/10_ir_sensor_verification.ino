@@ -51,6 +51,10 @@
 #define IN3 10
 #define IN4 11
 
+// Configuración del sensor
+const int PULSES_PER_REVOLUTION = 36;  // El sensor genera 36 pulsos por vuelta
+const float DEGREES_PER_PULSE = 360.0 / PULSES_PER_REVOLUTION;  // = 10° por pulso
+
 // ============================================
 // Variables Globales
 // ============================================
@@ -402,7 +406,10 @@ void setup() {
 
   Serial.println(F("Sensor: Photo Interrupter del kit Keyestudio"));
   Serial.println(F("Tipo: Fork-type IR sensor (LED + Phototransistor)"));
-  Serial.println(F("Funcion: Detectar ranura en disco codificador\n"));
+  Serial.println(F("Configuracion: 36 pulsos por revolucion"));
+  Serial.print(F("Resolucion angular: "));
+  Serial.print(DEGREES_PER_PULSE, 1);
+  Serial.println(F("° por pulso\n"));
 
   delay(1000);
 

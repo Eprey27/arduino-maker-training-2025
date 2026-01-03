@@ -63,6 +63,13 @@
 long STEPS_PER_REVOLUTION = 4097;  // Valor a calibrar
 const int DELAY_MS = 2;
 
+// ============================================
+// Configuración del Sensor
+// ============================================
+
+const int PULSES_PER_REVOLUTION = 36;  // Tu sensor genera 36 pulsos/vuelta
+const float DEGREES_PER_PULSE = 360.0 / PULSES_PER_REVOLUTION;  // = 10 grados/pulso
+
 // Secuencia Half-Step
 const int halfStepSequence[8][4] = {
   {1, 0, 0, 0},
@@ -81,12 +88,12 @@ int currentStep = 0;
 // Variables de Calibración
 // ============================================
 
-// Contador de revoluciones (actualizado por interrupción)
-volatile long revolutionCount = 0;
-volatile bool revolutionDetected = false;
+// Contador de pulsos (actualizado por interrupción)
+volatile long pulseCount = 0;
+volatile bool pulseDetected = false;
 
-// Configuración de pruebas
-const int TEST_REVOLUTIONS[] = {1, 5, 10, 20, 50};  // Revoluciones objetivo
+// Configuración de pruebas - Con 36 pulsos/rev tenemos mejor precisión
+const int TEST_REVOLUTIONS[] = {1, 2, 5, 10, 20};  // Revoluciones objetivo
 const int NUM_TESTS = 5;
 
 // Parámetros de calibración
@@ -101,9 +108,11 @@ int currentIteration = 0;
 struct CalibrationTest {
   int targetRevolutions;        // Revoluciones objetivo
   long stepsExecuted;           // Pasos ejecutados
-  float actualRevolutions;      // Revoluciones reales medidas
+  long pulsesDetected;          // Pulsos detectados por el sensor
+  float actualRevolutions;      // Revoluciones reales medidas (pulsos/36)
   float errorRevolutions;       // Error en revoluciones
   float errorPercent;           // Error porcentual
+  float errorDegrees;           // Error en grados
   long calculatedSteps;         // Pasos/rev calculados
 };
 
@@ -125,14 +134,15 @@ int testCount = 0;
 // Funciones de Interrupción
 // ============================================
 
-void onRevolutionDetected() {
-  // Debounce: ignorar triggers muy rápidos (<10ms)
+void onPulseDetected() {
+  // Debounce: ignorar triggers muy rápidos (<2ms)
+  // Con 36 pulsos/rev, el intervalo mínimo es ~100ms/36 = ~3ms a baja velocidad
   static unsigned long lastTrigger = 0;
   unsigned long currentTime = millis();
 
-  if (currentTime - lastTrigger > 10) {
-    revolutionCount++;
-    revolutionDetected = true;
+  if (currentTime - lastTrigger > 2) {
+    pulseCount++;
+    pulseDetected = true;
     lastTrigger = currentTime;
   }
 }
@@ -182,16 +192,18 @@ CalibrationTest performCalibrationTest(int targetRevs) {
   // Esperar estabilización
   delay(500);
 
-  // Resetear contador de revoluciones
+  // Resetear contador de pulsos
   noInterrupts();
-  revolutionCount = 0;
-  revolutionDetected = false;
+  pulseCount = 0;
+  pulseDetected = false;
   interrupts();
 
   Serial.print(F("Pasos a ejecutar: "));
   Serial.println(test.stepsExecuted);
   Serial.print(F("Revoluciones esperadas: "));
   Serial.println(targetRevs);
+  Serial.print(F("Pulsos esperados: "));
+  Serial.println(targetRevs * PULSES_PER_REVOLUTION);
   Serial.println(F("\nEjecutando..."));
 
   // Ejecutar movimiento
@@ -202,33 +214,49 @@ CalibrationTest performCalibrationTest(int targetRevs) {
   // Esperar última detección
   delay(200);
 
-  // Leer revoluciones detectadas
+  // Leer pulsos detectados
   noInterrupts();
-  long detectedRevs = revolutionCount;
+  long detectedPulses = pulseCount;
   interrupts();
 
-  test.actualRevolutions = (float)detectedRevs;
+  test.pulsesDetected = detectedPulses;
+
+  // Calcular revoluciones reales (pulsos / 36)
+  test.actualRevolutions = (float)detectedPulses / PULSES_PER_REVOLUTION;
 
   // Calcular error
   test.errorRevolutions = test.actualRevolutions - targetRevs;
   test.errorPercent = (test.errorRevolutions / targetRevs) * 100.0;
 
+  // Calcular error en grados (con resolución de 10° gracias a 36 pulsos/rev)
+  test.errorDegrees = test.errorRevolutions * 360.0;
+
   // Calcular pasos reales por revolución
-  if (detectedRevs > 0) {
-    test.calculatedSteps = test.stepsExecuted / detectedRevs;
+  if (test.actualRevolutions > 0) {
+    test.calculatedSteps = (long)((float)test.stepsExecuted / test.actualRevolutions);
   } else {
     test.calculatedSteps = STEPS_PER_REVOLUTION;
   }
 
   // Resultados
   Serial.println(F("\n--- RESULTADOS ---"));
-  Serial.print(F("Revoluciones detectadas: "));
-  Serial.println(test.actualRevolutions, 2);
+  Serial.print(F("Pulsos detectados: "));
+  Serial.print(test.pulsesDetected);
+  Serial.print(F(" / "));
+  Serial.println(targetRevs * PULSES_PER_REVOLUTION);
+
+  Serial.print(F("Revoluciones medidas: "));
+  Serial.println(test.actualRevolutions, 4);
 
   Serial.print(F("Error en revoluciones: "));
   if (test.errorRevolutions >= 0) Serial.print(F("+"));
-  Serial.print(test.errorRevolutions, 3);
+  Serial.print(test.errorRevolutions, 4);
   Serial.println(F(" rev"));
+
+  Serial.print(F("Error en grados: "));
+  if (test.errorDegrees >= 0) Serial.print(F("+"));
+  Serial.print(test.errorDegrees, 2);
+  Serial.println(F("°"));
 
   Serial.print(F("Error porcentual: "));
   if (test.errorPercent >= 0) Serial.print(F("+"));
@@ -329,18 +357,26 @@ void printTestSummary() {
   Serial.println(F("RESUMEN DE PRUEBAS"));
   Serial.println(F("========================================\n"));
 
-  Serial.println(F("Rev\tPasos\t\tDetectado\tError%\t\tPasos/Rev"));
-  Serial.println(F("---\t-----\t\t---------\t------\t\t---------"));
+  Serial.println(F("Rev\tPulsos\tDetect\tRev Real\tError°\t\tError%\t\tPasos/Rev"));
+  Serial.println(F("---\t------\t------\t--------\t------\t\t------\t\t---------"));
 
   for (int i = 0; i < testCount; i++) {
     Serial.print(tests[i].targetRevolutions);
     Serial.print(F("\t"));
 
-    Serial.print(tests[i].stepsExecuted);
+    int expectedPulses = tests[i].targetRevolutions * PULSES_PER_REVOLUTION;
+    Serial.print(expectedPulses);
     Serial.print(F("\t"));
 
-    Serial.print(tests[i].actualRevolutions, 2);
+    Serial.print(tests[i].pulsesDetected);
+    Serial.print(F("\t"));
+
+    Serial.print(tests[i].actualRevolutions, 3);
     Serial.print(F("\t\t"));
+
+    if (tests[i].errorDegrees >= 0) Serial.print(F("+"));
+    Serial.print(tests[i].errorDegrees, 1);
+    Serial.print(F("°\t\t"));
 
     if (tests[i].errorPercent >= 0) Serial.print(F("+"));
     Serial.print(tests[i].errorPercent, 2);
@@ -420,16 +456,22 @@ void printDataLog() {
   Serial.println(F("REGISTRO CSV"));
   Serial.println(F("========================================\n"));
 
-  Serial.println(F("target_rev,steps,actual_rev,error_rev,error_pct,calc_steps"));
+  Serial.println(F("target_rev,steps,pulses_expected,pulses_detected,actual_rev,error_rev,error_deg,error_pct,calc_steps"));
 
   for (int i = 0; i < testCount; i++) {
     Serial.print(tests[i].targetRevolutions);
     Serial.print(F(","));
     Serial.print(tests[i].stepsExecuted);
     Serial.print(F(","));
-    Serial.print(tests[i].actualRevolutions, 3);
+    Serial.print(tests[i].targetRevolutions * PULSES_PER_REVOLUTION);
     Serial.print(F(","));
-    Serial.print(tests[i].errorRevolutions, 3);
+    Serial.print(tests[i].pulsesDetected);
+    Serial.print(F(","));
+    Serial.print(tests[i].actualRevolutions, 4);
+    Serial.print(F(","));
+    Serial.print(tests[i].errorRevolutions, 4);
+    Serial.print(F(","));
+    Serial.print(tests[i].errorDegrees, 2);
     Serial.print(F(","));
     Serial.print(tests[i].errorPercent, 3);
     Serial.print(F(","));
@@ -478,6 +520,7 @@ void printHeader() {
   Serial.println(F("\n============================================="));
   Serial.println(F("  CALIBRACION AUTOMATICA CON IR SENSOR"));
   Serial.println(F("  Motor 28BYJ-48 + Photo Interrupter"));
+  Serial.println(F("  Resolucion: 36 pulsos/revolucion (10°)"));
   Serial.println(F("=============================================\n"));
 
   Serial.print(F("Iteracion: "));
@@ -488,6 +531,10 @@ void printHeader() {
   Serial.print(F("Precision objetivo: ±"));
   Serial.print(TARGET_PRECISION * 100, 1);
   Serial.println(F("%"));
+
+  Serial.print(F("Resolucion angular: "));
+  Serial.print(DEGREES_PER_PULSE, 1);
+  Serial.println(F("° por pulso"));
 
   Serial.println();
 }
@@ -510,7 +557,7 @@ void setup() {
   stopMotor();
 
   // Configurar interrupción
-  attachInterrupt(digitalPinToInterrupt(IR_SENSOR_PIN), onRevolutionDetected, FALLING);
+  attachInterrupt(digitalPinToInterrupt(IR_SENSOR_PIN), onPulseDetected, FALLING);
 
   printHeader();
 
